@@ -48,7 +48,7 @@ class TwoLinkRobotParam:
 class TwoLinkRobotColorParam:
     def __init__(self):
         self.link1_color = 'blue'
-        self.link2_color = 'red'
+        self.link2_color = 'blue'
         self.origin_color = 'black'
         self.joint1_color = 'black'
         self.joint2_color = 'black'
