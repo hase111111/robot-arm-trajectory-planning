@@ -51,18 +51,23 @@ class TwoLinkRobot:
         y2: float = y1 + l2 * np.sin(self.theta1 + self.theta2)
         return x1, y1, x2, y2
 
-    def inverse_kinematics(self, end_effecter_x: float, end_effecter_y: float, *, other: bool = True) -> None:
+    def inverse_kinematics(self, end_effecter_x: float, end_effecter_y: float, *, other: bool = True) -> None:        
         # 見やすくするために変数名を短くしている
         l1: float = self.__param.link1
         l2: float = self.__param.link2
-        x: float = end_effecter_x - self.__param.origin[0]
-        y: float = end_effecter_y - self.__param.origin[1]
+        x = float(end_effecter_x - self.__param.origin[0])
+        y = float(end_effecter_y - self.__param.origin[1])
 
         # そもそも届かない位置にある場合、theta1 = arctan2(y, x), theta2 = 0 とする
         if x**2 + y**2 > (l1 + l2)**2:
             self.theta1 = np.arctan2(y, x)
             self.theta2 = 0
             self.__clanmp_theta1()
+            return
+
+        # ゼロ割りを防ぐための処理
+        if x == 0 and y == 0:
+            x = 1e-6
 
         # 逆運動学の計算
         try:

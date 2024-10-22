@@ -17,6 +17,12 @@ from matplotlib.patches import Circle
 from two_link_robot_param import TwoLinkRobotParam, TwoLinkRobotColorParam
 from two_link_robot import TwoLinkRobot
 
+def my_clear(ax):
+    ax.clear()
+    ax.set_aspect('equal')
+    ax.set_xlim(-2, 2)
+    ax.set_ylim(-2, 2)
+
 def main():
     # ロボットのパラメータ
     param = TwoLinkRobotParam()
@@ -41,51 +47,42 @@ def main():
     ax.set_xlim(-2, 2)
     ax.set_ylim(-2, 2)
 
-    # ロボットの初期姿勢
-    theta1 = 0
-    theta2 = 0
-
     # マウスカーソルの位置
-    end_effecter_x = 1.5
-    end_effecter_y = 1.5
+    end_effecter_x = 1.0
+    end_effecter_y = 1.0
 
     # 逆運動学解を切り替えるためのフラグ
     other = False
 
     # ロボットの描画
-    x1, y1, x2, y2 = robot.forward_kinematics(theta1, theta2)
-    link1, = ax.plot([param.origin[0], x1], [param.origin[1], y1], color=color_param.link1_color)
-    link2, = ax.plot([x1, x2], [y1, y2], color=color_param.link2_color)
-
-    # マウスカーソルの位置を表示するための円
-    end_effecter_circle = Circle((end_effecter_x, end_effecter_y), 0.1, color='black', fill=False)
-    ax.add_patch(end_effecter_circle)
+    robot.plot(ax)
 
     def on_move(event):
-        nonlocal end_effecter_x, end_effecter_y
-        end_effecter_x = event.xdata
-        end_effecter_y = event.ydata
-        if end_effecter_x is None or end_effecter_y is None:
-            return
-        end_effecter_circle.center = (end_effecter_x, end_effecter_y)
-        theta1, theta2 = robot.inverse_kinematics(end_effecter_x, end_effecter_y, other=other)
-        if robot.is_in_range(theta1, theta2):
-            x1, y1, x2, y2 = robot.forward_kinematics(theta1, theta2)
-            link1.set_xdata([param.origin[0], x1])
-            link1.set_ydata([param.origin[1], y1])
-            link2.set_xdata([x1, x2])
-            link2.set_ydata([y1, y2])
-            fig.canvas.draw()
+        nonlocal other, end_effecter_x, end_effecter_y
+        x = end_effecter_x if event.xdata is None else float(event.xdata)
+        y = end_effecter_y if event.ydata is None else float(event.ydata)
+        end_effecter_x = x
+        end_effecter_y = y
+
+        my_clear(ax)
+        ax.add_patch(Circle([x, y], 0.1, color='black', fill=False))
+        robot.inverse_kinematics(x, y, other=other)
+        robot.plot(ax)
+        fig.canvas.draw()
 
     def on_click(event):
-        nonlocal theta1, theta2, other
+        nonlocal other, end_effecter_x, end_effecter_y
+
+        # 左クリックのみ受け付ける
+        if event.button != 1:
+            return
+        
         other = not other
-        theta1, theta2 = robot.inverse_kinematics(end_effecter_x, end_effecter_y, other=other)
-        x1, y1, x2, y2 = robot.forward_kinematics(theta1, theta2)
-        link1.set_xdata([param.origin[0], x1])
-        link1.set_ydata([param.origin[1], y1])
-        link2.set_xdata([x1, x2])
-        link2.set_ydata([y1, y2])
+        robot.inverse_kinematics(end_effecter_x, end_effecter_y, other=other)
+
+        my_clear(ax)
+        ax.add_patch(Circle([end_effecter_x, end_effecter_y], 0.1, color='black', fill=False))
+        robot.plot(ax)
         fig.canvas.draw()
 
     fig.canvas.mpl_connect('motion_notify_event', on_move)
