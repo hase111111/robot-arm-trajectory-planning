@@ -35,11 +35,18 @@ class TwoLinkRobot:
         return x1, y1, x2, y2
 
     def inverse_kinematics(self, end_effecter_x: float, end_effecter_y: float, *, other: bool = True) -> Tuple[float, float]:
-        l1 = self._param.link1
-        l2 = self._param.link2
+        # 見やすくするために変数名を短くしている
+        l1:float = self._param.link1
+        l2:float = self._param.link2
         o = self._param.origin
-        x = end_effecter_x - o[0]
-        y = end_effecter_y - o[1]
+        x:float = end_effecter_x - o[0]
+        y:float = end_effecter_y - o[1]
+
+        # そもそも届かない位置にある場合、theta1 = arctan2(y, x), theta2 = 0 とする
+        if x**2 + y**2 > (l1 + l2)**2:
+            return np.arctan2(y, x), 0
+
+        # 逆運動学の計算
         theta2 = np.arccos((x**2 + y**2 - l1**2 - l2**2) / (2 * l1 * l2))
         theta1 = np.arctan2(y, x) - np.arctan2(l2 * np.sin(theta2), l1 + l2 * np.cos(theta2))
         return theta1, theta2
@@ -74,7 +81,7 @@ def main() -> None:
     ax.set_aspect('equal')
     ax.set_xlim(-2, 2)
     ax.set_ylim(-2, 2)
-    ax.set_title("2-link robot, origin at (0, 0),\n link1=1, link2=1, theta1=0, theta2=0")
+    ax.set_title("2-link robot" + str(param))
 
     robot.plot(ax, 0, 0)
 

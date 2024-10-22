@@ -45,6 +45,15 @@ class TwoLinkRobotParam:
         def theta2_max(self, value):
             self._theta2_max = clamp_angle(value)
 
+    def __str__(self) -> str:
+        l_str:str = f'link1: {self.link1}, link2: {self.link2} '
+        o_str:str = f'origin: {self.origin}\n'
+        # 角度は rad -> deg に変換して表示
+        r:float = 180 / np.pi
+        theta1_str:str = f'theta1_min: {self.theta1_min * r}, theta1_max: {self.theta1_max * r}\n'
+        theta2_str:str = f'theta2_min: {self.theta2_min * r}, theta2_max: {self.theta2_max * r}\n'
+        return l_str + o_str + theta1_str + theta2_str
+
 class TwoLinkRobotColorParam:
     def __init__(self):
         self.link1_color = 'blue'
