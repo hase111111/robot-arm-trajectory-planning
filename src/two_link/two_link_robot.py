@@ -16,7 +16,7 @@ from matplotlib import axes
 from typing import Tuple
 
 from two_link_robot_param import TwoLinkRobotParam, TwoLinkRobotColorParam
-
+from util import clamp_angle
 
 class TwoLinkRobot:
     def __init__(self, param: TwoLinkRobotParam = TwoLinkRobotParam(), 
@@ -38,9 +38,8 @@ class TwoLinkRobot:
         # 見やすくするために変数名を短くしている
         l1:float = self.__param.link1
         l2:float = self.__param.link2
-        o = self.__param.origin
-        x:float = end_effecter_x - o[0]
-        y:float = end_effecter_y - o[1]
+        x:float = end_effecter_x - self.__param.origin[0]
+        y:float = end_effecter_y - self.__param.origin[1]
 
         # そもそも届かない位置にある場合、theta1 = arctan2(y, x), theta2 = 0 とする
         if x**2 + y**2 > (l1 + l2)**2:
@@ -48,12 +47,12 @@ class TwoLinkRobot:
 
         # 逆運動学の計算
         try:
-            theta2 = np.arccos((x**2 + y**2 - l1**2 - l2**2) / (2 * l1 * l2))
-            theta1 = np.arctan2(y, x) - np.arctan2(l2 * np.sin(theta2), l1 + l2 * np.cos(theta2))
+            theta1 = np.arctan2(y, x) - np.arccos((x**2 + y**2 + l1**2 - l2**2) / (2 * l1 * np.sqrt(x**2 + y**2)))
+            theta2 = np.pi - np.arccos((l1**2 + l2**2 - (x**2 + y**2)) / (2 * l1 * l2))
         except:
             theta1 = np.arctan2(y, x)
             theta2 = 0
-        return theta1, theta2
+        return clamp_angle(theta1), clamp_angle(theta2)
     
     def theta1_is_in_range(self, theta1: float) -> bool:
         return self.__param.theta1_min <= theta1 <= self.__param.theta1_max

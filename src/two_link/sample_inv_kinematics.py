@@ -68,6 +68,8 @@ def main():
         nonlocal end_effecter_x, end_effecter_y
         end_effecter_x = event.xdata
         end_effecter_y = event.ydata
+        if end_effecter_x is None or end_effecter_y is None:
+            return
         end_effecter_circle.center = (end_effecter_x, end_effecter_y)
         theta1, theta2 = robot.inverse_kinematics(end_effecter_x, end_effecter_y)
         if robot.is_in_range(theta1, theta2):
