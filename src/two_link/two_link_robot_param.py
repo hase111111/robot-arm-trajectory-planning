@@ -5,6 +5,10 @@
 # Released under the MIT license
 # https://opensource.org/licenses/mit-license.php
 
+# [説明]
+# 2リンクロボットのパラメータを入力するための構造体と
+# 2リンクロボットの色のパラメータを入力するための構造体
+
 import numpy as np
 
 from util import clamp_angle
