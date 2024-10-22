@@ -16,7 +16,7 @@ from two_link_robot_param import TwoLinkRobotParam
 from obstacle import Obstacle, CircleObstacle
 from util import clamp_angle
 
-class TrajectoryPlannerLiner:
+class RRTStarPlanner:
     class Node:
         def __init__(self, x: float, y: float, parent: int) -> None:
             self.x: float = x
@@ -58,8 +58,8 @@ class TrajectoryPlannerLiner:
         step = 0.05
 
         # ノードのリスト
-        nodes: List[TrajectoryPlannerLiner.Node] = []
-        nodes.append(TrajectoryPlannerLiner.Node(self._state[0], self._state[1], -1))
+        nodes: List[RRTStarPlanner.Node] = []
+        nodes.append(RRTStarPlanner.Node(self._state[0], self._state[1], -1))
 
         cnt = 0
         max_cnt = 100000
@@ -92,7 +92,7 @@ class TrajectoryPlannerLiner:
             if self._obstacle.is_collision(self._robot):
                 continue
 
-            nodes.append(TrajectoryPlannerLiner.Node(theta1, theta2, min_index))
+            nodes.append(RRTStarPlanner.Node(theta1, theta2, min_index))
             nodes[min_index].children.append(len(nodes) - 1)
 
             if math.sqrt((theta1 - self._state[2])**2 + (theta2 - self._state[3])**2) < step:
@@ -140,7 +140,7 @@ def main():
     obstacle = CircleObstacle(1.5, 1.5, 0.5)
 
     # 軌道計画
-    planner = TrajectoryPlannerLiner(robot, obstacle)
+    planner = RRTStarPlanner(robot, obstacle)
     planner.set_time(1)
     planner.set_state(0, 0, np.pi / 2, 0)
 

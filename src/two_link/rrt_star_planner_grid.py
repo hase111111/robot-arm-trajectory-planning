@@ -17,13 +17,13 @@ from two_link_robot_param import TwoLinkRobotParam
 from obstacle import Obstacle, CircleObstacle
 from util import clamp_angle
 
-class TrajectoryPlannerLiner:
+class RRTStarPlannerGrid:
     class Node:
         def __init__(self, x: float, y: float, parent: int) -> None:
             self.x: float = x
             self.y: float = y
             self.parent: int = parent
-            self.children: List[int] = []
+            self.cost: float = 0
 
     def __init__(self, robot: TwoLinkRobot = TwoLinkRobot(), obstacle: Obstacle = CircleObstacle(1, 1, 0.5)) -> None:
         self._robot: TwoLinkRobot = robot
@@ -47,6 +47,11 @@ class TrajectoryPlannerLiner:
         if not self.already_done:
             if not self.__rrt_star():
                 return np.array([self._state[0], self._state[1]])
+            else:
+                self.__post_processing()
+                self.__post_processing()
+                self.__post_processing()
+                self.__post_processing()
 
         if time < 0:
             return np.array([self._state[0], self._state[1]])
@@ -62,11 +67,11 @@ class TrajectoryPlannerLiner:
         step = math.sqrt((self._state[2] - self._state[0])**2 + (self._state[3] - self._state[1])**2) / 20
         print('step: ' + str(step))
 
-        grid = self.__make_collision_grid()
+        self.grid = self.__make_collision_grid()
 
         # ノードのリスト
-        nodes: List[TrajectoryPlannerLiner.Node] = []
-        nodes.append(TrajectoryPlannerLiner.Node(self._state[0], self._state[1], -1))
+        nodes: List[RRTStarPlannerGrid.Node] = []
+        nodes.append(RRTStarPlannerGrid.Node(self._state[0], self._state[1], -1))
 
         cnt = 0
         max_cnt = 10000
@@ -79,37 +84,20 @@ class TrajectoryPlannerLiner:
 
         while cnt < max_cnt:
             cnt += 1
-            x = np.random.uniform(-np.pi, np.pi)
-            y = np.random.uniform(-np.pi, np.pi)
+            x, y = self.__get_random_angle()
 
-            min_distance2 = float('inf')
-            min_index = -1
-            for i, node in enumerate(nodes):
-                distance2 = (node.x - x)**2 + (node.y - y)**2
-                if distance2 < min_distance2:
-                    min_distance2 = distance2
-                    min_index = i
+            # nodesの中から最も近いノードを探す
+            min_index = self.__get_most_near_index(nodes, x, y)
 
-            theta1 = nodes[min_index].x
-            theta2 = nodes[min_index].y
-            theta1 += step * math.cos(math.atan2(y - theta2, x - theta1))
-            theta2 += step * math.sin(math.atan2(y - theta2, x - theta1))
-            if grid[self.__get_index(theta1, theta2)]:
+            # min_index から x, y に向かってstepだけ進んだ点を新たなノードとして追加
+            theta1, theta2 = self.__streer(x, y, nodes[min_index].x, nodes[min_index].y, step)
+
+            # 障害物に衝突していたらスキップ
+            if self.grid[self.__get_index(theta1, theta2)]:
                 continue
 
-            # ここまで来たら，x_new(theta1, theta2)を追加
-            # ただし，root からの経路が最も近くなるようなノードを探して，そのノードに接続する
-
-            min_distance = float('inf')
-            min_index = -1
-            for i, node in enumerate(nodes):
-                distance = math.sqrt((node.x - theta1)**2 + (node.y - theta2)**2)
-                if distance < min_distance:
-                    min_distance = distance
-                    min_index = i
-
-            nodes.append(TrajectoryPlannerLiner.Node(theta1, theta2, min_index))
-            nodes[min_index].children.append(len(nodes) - 1)
+            # 新たなノードを追加
+            nodes.append(RRTStarPlannerGrid.Node(theta1, theta2, min_index))
 
             if (theta1 - self._state[2])**2 + (theta2 - self._state[3])**2 < step**2:
                 success = True
@@ -161,6 +149,48 @@ class TrajectoryPlannerLiner:
         # グリッドのインデックスを角度に変換
         return i / self.grid_num * 2 * np.pi, j / self.grid_num * 2 * np.pi
     
+    def __get_random_angle(self) -> Tuple[float, float]:
+        return np.random.uniform(-np.pi, np.pi), np.random.uniform(-np.pi, np.pi)
+    
+    def __get_most_near_index(self, nodes, x: float, y: float) -> int:
+        min_distance = float('inf')
+        min_index = -1
+        for i, node in enumerate(nodes):
+            distance = (node.x - x)**2 + (node.y - y)**2
+            if distance < min_distance:
+                min_distance = distance
+                min_index = i
+        return min_index
+    
+    def __streer(self, x: float, y: float, theta1: float, theta2: float, step: float) -> Tuple[float, float]:
+        theta1 += step * math.cos(math.atan2(y - theta2, x - theta1))
+        theta2 += step * math.sin(math.atan2(y - theta2, x - theta1))
+        return theta1, theta2
+    
+    def __post_processing(self):
+        # 2点を選び、それらの間に障害物がないか確認
+        # 障害物がない場合、その間にあるノードを削除
+        # これを繰り返す
+        first_index = 0
+        second_index = 2
+        while second_index < len(self.result[0]):
+            # 中点を取得
+            mid_theta1 = (self.result[0][first_index] + self.result[0][second_index]) / 2
+            mid_theta2 = (self.result[1][first_index] + self.result[1][second_index]) / 2
+
+            # 中点が障害物に当たるか確認
+            if not self.grid[self.__get_index(mid_theta1, mid_theta2)]:
+                # 障害物に当たらない場合、first_index と second_index の間にあるノードを中点に変更
+                self.result[0][first_index + 1] = mid_theta1
+                self.result[1][first_index + 1] = mid_theta2
+                first_index += 1
+                second_index += 1                
+            else:
+                first_index += 1
+                second_index += 1
+
+        print('finish post processing')
+    
 def main():
     # ロボットのパラメータ
     robot_param = TwoLinkRobotParam()
@@ -179,12 +209,12 @@ def main():
     robot = TwoLinkRobot(robot_param)
 
     # 障害物のパラメータ
-    obstacle = CircleObstacle(1.5, 1.5, 0.5)
+    obstacle = CircleObstacle(1.3, 1.3, 0.5)
 
     # 軌道計画
-    planner = TrajectoryPlannerLiner(robot, obstacle)
+    planner = RRTStarPlannerGrid(robot, obstacle)
     planner.set_time(1)
-    planner.set_state(0, 0, np.pi / 2, np.pi / 2)
+    planner.set_state(0, 0, np.pi / 2, 0)
 
     time = np.linspace(0, total_time, time_division)
     trajectory = np.array([planner.calc(t) for t in time])
