@@ -13,8 +13,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
-from matplotlib import axes
-from typing import Tuple
 
 from two_link_robot_param import TwoLinkRobotParam, TwoLinkRobotColorParam
 from two_link_robot import TwoLinkRobot
@@ -51,9 +49,8 @@ def main():
     end_effecter_x = 1.5
     end_effecter_y = 1.5
 
-    # マウスカーソルの位置を表示するための円
-    end_effecter_circle = Circle((end_effecter_x, end_effecter_y), 0.1, color='black', fill=False)
-    ax.add_patch(end_effecter_circle)
+    # 逆運動学解を切り替えるためのフラグ
+    other = False
 
     # ロボットの描画
     x1, y1, x2, y2 = robot.forward_kinematics(theta1, theta2)
@@ -71,7 +68,7 @@ def main():
         if end_effecter_x is None or end_effecter_y is None:
             return
         end_effecter_circle.center = (end_effecter_x, end_effecter_y)
-        theta1, theta2 = robot.inverse_kinematics(end_effecter_x, end_effecter_y)
+        theta1, theta2 = robot.inverse_kinematics(end_effecter_x, end_effecter_y, other=other)
         if robot.is_in_range(theta1, theta2):
             x1, y1, x2, y2 = robot.forward_kinematics(theta1, theta2)
             link1.set_xdata([param.origin[0], x1])
@@ -81,8 +78,9 @@ def main():
             fig.canvas.draw()
 
     def on_click(event):
-        nonlocal theta1, theta2
-        theta1, theta2 = robot.inverse_kinematics(end_effecter_x, end_effecter_y, other=True)
+        nonlocal theta1, theta2, other
+        other = not other
+        theta1, theta2 = robot.inverse_kinematics(end_effecter_x, end_effecter_y, other=other)
         x1, y1, x2, y2 = robot.forward_kinematics(theta1, theta2)
         link1.set_xdata([param.origin[0], x1])
         link1.set_ydata([param.origin[1], y1])

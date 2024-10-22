@@ -47,8 +47,12 @@ class TwoLinkRobot:
 
         # 逆運動学の計算
         try:
-            theta1 = np.arctan2(y, x) - np.arccos((x**2 + y**2 + l1**2 - l2**2) / (2 * l1 * np.sqrt(x**2 + y**2)))
-            theta2 = np.pi - np.arccos((l1**2 + l2**2 - (x**2 + y**2)) / (2 * l1 * l2))
+            if other == True:
+                theta1 = np.arctan2(y, x) + np.arccos((x**2 + y**2 + l1**2 - l2**2) / (2 * l1 * np.sqrt(x**2 + y**2)))
+                theta2 = np.pi + np.arccos((l1**2 + l2**2 - (x**2 + y**2)) / (2 * l1 * l2))
+            else:
+                theta1 = np.arctan2(y, x) - np.arccos((x**2 + y**2 + l1**2 - l2**2) / (2 * l1 * np.sqrt(x**2 + y**2)))
+                theta2 = np.pi - np.arccos((l1**2 + l2**2 - (x**2 + y**2)) / (2 * l1 * l2))
         except:
             theta1 = np.arctan2(y, x)
             theta2 = 0
