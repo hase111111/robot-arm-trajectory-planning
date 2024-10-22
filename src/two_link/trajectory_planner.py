@@ -140,7 +140,9 @@ def main():
         ax.set_aspect('equal')
         ax.set_xlim(-2, 2)
         ax.set_ylim(-2, 2)
-        robot.plot(ax, trajectory[frame][0], trajectory[frame][1])
+        robot.theta1 = trajectory[frame][0]
+        robot.theta2 = trajectory[frame][1]
+        robot.plot(ax)
 
     ani = animation.FuncAnimation(fig, update, frames=len(time), interval=total_time * 1000 / len(time))
     plt.show()
