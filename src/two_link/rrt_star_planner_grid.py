@@ -10,6 +10,7 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from typing import List
+from typing import Tuple
 
 from two_link_robot import TwoLinkRobot
 from two_link_robot_param import TwoLinkRobotParam
@@ -31,6 +32,7 @@ class TrajectoryPlannerLiner:
         self._total_time: float = 1
         self.already_done: bool = False
         self.result: List[np.ndarray] = []
+        self.grid_num = 100
 
     def set_time(self, total_time: float) -> None:
         self._total_time: float = float(total_time)
@@ -43,7 +45,8 @@ class TrajectoryPlannerLiner:
 
     def calc(self, time: float) -> np.ndarray:
         if not self.already_done:
-            self.__rrt_star()
+            if not self.__rrt_star():
+                return np.array([self._state[0], self._state[1]])
 
         if time < 0:
             return np.array([self._state[0], self._state[1]])
@@ -55,14 +58,18 @@ class TrajectoryPlannerLiner:
     
     def __rrt_star(self) -> bool:
         print('RRT*')
-        step = 0.05
+        # 最短20stepぐらいでゴールに到達するようにする
+        step = math.sqrt((self._state[2] - self._state[0])**2 + (self._state[3] - self._state[1])**2) / 20
+        print('step: ' + str(step))
+
+        grid = self.__make_collision_grid()
 
         # ノードのリスト
         nodes: List[TrajectoryPlannerLiner.Node] = []
         nodes.append(TrajectoryPlannerLiner.Node(self._state[0], self._state[1], -1))
 
         cnt = 0
-        max_cnt = 100000
+        max_cnt = 10000
         success = False
 
         # [-π ~ π, -π ~ π]の範囲でランダムな点を生成
@@ -75,32 +82,42 @@ class TrajectoryPlannerLiner:
             x = np.random.uniform(-np.pi, np.pi)
             y = np.random.uniform(-np.pi, np.pi)
 
-            min_distance = float('inf')
+            min_distance2 = float('inf')
             min_index = -1
             for i, node in enumerate(nodes):
-                distance = math.sqrt((node.x - x)**2 + (node.y - y)**2)
-                if distance < min_distance:
-                    min_distance = distance
+                distance2 = (node.x - x)**2 + (node.y - y)**2
+                if distance2 < min_distance2:
+                    min_distance2 = distance2
                     min_index = i
 
             theta1 = nodes[min_index].x
             theta2 = nodes[min_index].y
             theta1 += step * math.cos(math.atan2(y - theta2, x - theta1))
             theta2 += step * math.sin(math.atan2(y - theta2, x - theta1))
-            self._robot.theta1 = theta1
-            self._robot.theta2 = theta2
-            if self._obstacle.is_collision(self._robot):
+            if grid[self.__get_index(theta1, theta2)]:
                 continue
+
+            # ここまで来たら，x_new(theta1, theta2)を追加
+            # ただし，root からの経路が最も近くなるようなノードを探して，そのノードに接続する
+
+            min_distance = float('inf')
+            min_index = -1
+            for i, node in enumerate(nodes):
+                distance = math.sqrt((node.x - theta1)**2 + (node.y - theta2)**2)
+                if distance < min_distance:
+                    min_distance = distance
+                    min_index = i
 
             nodes.append(TrajectoryPlannerLiner.Node(theta1, theta2, min_index))
             nodes[min_index].children.append(len(nodes) - 1)
 
-            if math.sqrt((theta1 - self._state[2])**2 + (theta2 - self._state[3])**2) < step:
+            if (theta1 - self._state[2])**2 + (theta2 - self._state[3])**2 < step**2:
                 success = True
                 break
 
         if not success:
             print('Fail')
+            self.already_done = True
             return False
         
         # ゴールから逆にたどっていく
@@ -118,6 +135,31 @@ class TrajectoryPlannerLiner:
         print('path: ' + str(len(self.result[0])))
         print('node: ' + str(len(nodes)))
         return True
+    
+    def __make_collision_grid(self) -> np.ndarray:
+        print('now making collision grid')
+        # [-π ~ π,-π ~ π] を self.grid_num x self.grid_num のグリッドに分割
+        # 障害物がある場所はTrue, ない場所はFalse
+        self.collision_grid = np.zeros((self.grid_num, self.grid_num), dtype=bool)
+        for i in range(self.grid_num):
+            for j in range(self.grid_num):
+                ang1, ang2 = self.__get_angle(i, j)
+                self._robot.theta1 = ang1
+                self._robot.theta2 = ang2
+                if self._obstacle.is_collision(self._robot):
+                    self.collision_grid[i, j] = True
+
+        print('finish making collision grid')
+        return self.collision_grid
+
+    def __get_index(self, ang1: float, ang2: float) -> Tuple[int, int]:
+        # 角度をグリッドのインデックスに変換
+        # 0 ~ 2π を 0 ~ self.grid_num に変換
+        return int(ang1 / (2 * np.pi) * self.grid_num), int(ang2 / (2 * np.pi) * self.grid_num)
+    
+    def __get_angle(self, i: int, j: int) -> Tuple[float, float]:
+        # グリッドのインデックスを角度に変換
+        return i / self.grid_num * 2 * np.pi, j / self.grid_num * 2 * np.pi
     
 def main():
     # ロボットのパラメータ
@@ -142,7 +184,7 @@ def main():
     # 軌道計画
     planner = TrajectoryPlannerLiner(robot, obstacle)
     planner.set_time(1)
-    planner.set_state(0, 0, np.pi / 2, 0)
+    planner.set_state(0, 0, np.pi / 2, np.pi / 2)
 
     time = np.linspace(0, total_time, time_division)
     trajectory = np.array([planner.calc(t) for t in time])
