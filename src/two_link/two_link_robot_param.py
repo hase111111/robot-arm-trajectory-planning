@@ -57,7 +57,7 @@ class TwoLinkRobotParam:
         # 角度は rad -> deg に変換して表示
         r:float = 180 / np.pi
         theta1_str:str = f'theta1_min: {self.theta1_min * r}, theta1_max: {self.theta1_max * r}\n'
-        theta2_str:str = f'theta2_min: {self.theta2_min * r}, theta2_max: {self.theta2_max * r}\n'
+        theta2_str:str = f'theta2_min: {self.theta2_min * r}, theta2_max: {self.theta2_max * r}'
         return l_str + o_str + theta1_str + theta2_str
 
 class TwoLinkRobotColorParam:

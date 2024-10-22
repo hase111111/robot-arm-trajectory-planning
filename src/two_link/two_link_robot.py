@@ -71,9 +71,9 @@ class TwoLinkRobot:
 
 
 def main() -> None:
-    print("Plot 2-link robot")
-
     param = TwoLinkRobotParam()
+
+    print("Plot 2-link robot" + str(TwoLinkRobotParam()))
 
     robot = TwoLinkRobot(param)
 
