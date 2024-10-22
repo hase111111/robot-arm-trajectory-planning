@@ -47,8 +47,12 @@ class TwoLinkRobot:
             return np.arctan2(y, x), 0
 
         # 逆運動学の計算
-        theta2 = np.arccos((x**2 + y**2 - l1**2 - l2**2) / (2 * l1 * l2))
-        theta1 = np.arctan2(y, x) - np.arctan2(l2 * np.sin(theta2), l1 + l2 * np.cos(theta2))
+        try:
+            theta2 = np.arccos((x**2 + y**2 - l1**2 - l2**2) / (2 * l1 * l2))
+            theta1 = np.arctan2(y, x) - np.arctan2(l2 * np.sin(theta2), l1 + l2 * np.cos(theta2))
+        except:
+            theta1 = np.arctan2(y, x)
+            theta2 = 0
         return theta1, theta2
     
     def theta1_is_in_range(self, theta1: float) -> bool:
