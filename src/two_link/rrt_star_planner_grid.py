@@ -311,8 +311,8 @@ def main():
     obstacle = CircleObstacle(0.9, 1.0, 0.3)
 
     # 軌道計画
-    planner = RRTStarPlannerGrid(robot, obstacle, animation=False)
-    planner.set_time(1)
+    planner = RRTStarPlannerGrid(robot, obstacle, animation=True)
+    planner.set_time(total_time)
     planner.set_state(0, 0, np.pi / 2, 0)
 
     time = np.linspace(0, total_time, time_division)
