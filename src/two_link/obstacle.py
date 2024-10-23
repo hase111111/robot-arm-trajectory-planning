@@ -28,10 +28,23 @@ class CircleObstacle(Obstacle):
 
     def is_collision(self, robot: TwoLinkRobot) -> bool:
         x1, y1, x2, y2 = robot.forward_kinematics()
+        ox, oy = robot.param.origin
         if (x1 - self.__x)**2 + (y1 - self.__y)**2 < self.__r**2:
             return True
         if (x2 - self.__x)**2 + (y2 - self.__y)**2 < self.__r**2:
             return True
+        if (ox - self.__x)**2 + (oy - self.__y)**2 < self.__r**2:
+            return True
+        
+        # 中点も含めて判定
+        m1x, m1y = (x1 + x2) / 2, (y1 + y2) / 2
+        if (m1x - self.__x)**2 + (m1y - self.__y)**2 < self.__r**2:
+            return True
+        
+        m2x, m2y = (ox + x1) / 2, (oy + y1) / 2
+        if (m2x - self.__x)**2 + (m2y - self.__y)**2 < self.__r**2:
+            return True
+
         return False
     
     def plot(self, ax: axes.Axes) -> None:

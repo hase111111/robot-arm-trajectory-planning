@@ -42,6 +42,15 @@ class TwoLinkRobot:
     def theta2(self, value: float) -> None:
         self.__theta2 = clamp_angle(value)
 
+    @property
+    def param(self) -> TwoLinkRobotParam:
+        return self.__param
+    
+    @param.setter
+    def param(self, value: TwoLinkRobotParam) -> None:
+        # パラメータの変更を許可しない
+        pass
+
     def forward_kinematics(self) -> Tuple[float, float, float, float]:
         l1: float = self.__param.link1
         l2: float = self.__param.link2

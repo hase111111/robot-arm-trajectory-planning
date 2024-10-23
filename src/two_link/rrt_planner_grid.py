@@ -17,7 +17,7 @@ from two_link_robot_param import TwoLinkRobotParam
 from obstacle import Obstacle, CircleObstacle
 from util import clamp_angle
 
-class RRTStarPlannerGrid:
+class RRTPlannerGrid:
     class Node:
         def __init__(self, x: float, y: float, parent: int) -> None:
             self.x: float = x
@@ -25,7 +25,9 @@ class RRTStarPlannerGrid:
             self.parent: int = parent
             self.cost: float = 0
 
-    def __init__(self, robot: TwoLinkRobot = TwoLinkRobot(), obstacle: Obstacle = CircleObstacle(1, 1, 0.5)) -> None:
+    def __init__(self, robot: TwoLinkRobot = TwoLinkRobot(), 
+                 obstacle: Obstacle = CircleObstacle(1, 1, 0.5),
+                 *, animation = False) -> None:
         self._robot: TwoLinkRobot = robot
         self._obstacle: Obstacle = obstacle
         self._state: np.ndarray = np.array([0, 0, np.pi, 0])
@@ -33,6 +35,7 @@ class RRTStarPlannerGrid:
         self.already_done: bool = False
         self.result: List[np.ndarray] = []
         self.grid_num = 100
+        self.animation = animation
 
     def set_time(self, total_time: float) -> None:
         self._total_time: float = float(total_time)
@@ -48,10 +51,9 @@ class RRTStarPlannerGrid:
             if not self.__rrt_star():
                 return np.array([self._state[0], self._state[1]])
             else:
-                self.__post_processing()
-                self.__post_processing()
-                self.__post_processing()
-                self.__post_processing()
+                # 10 回ポストプロセスを行う
+                for _ in range(10):
+                    self.__post_processing()
 
         if time < 0:
             return np.array([self._state[0], self._state[1]])
@@ -62,16 +64,19 @@ class RRTStarPlannerGrid:
         return np.array([self.result[0][index], self.result[1][index]])
     
     def __rrt_star(self) -> bool:
-        print('RRT*')
-        # 最短20stepぐらいでゴールに到達するようにする
-        step = math.sqrt((self._state[2] - self._state[0])**2 + (self._state[3] - self._state[1])**2) / 20
+        print('Now Start RRT')
+        # 最短10stepぐらいでゴールに到達するようにする
+        step = math.sqrt((self._state[2] - self._state[0])**2 + (self._state[3] - self._state[1])**2) / 10
         print('step: ' + str(step))
+
+        if self.animation:
+            self.__init_plot()
 
         self.grid = self.__make_collision_grid()
 
         # ノードのリスト
-        nodes: List[RRTStarPlannerGrid.Node] = []
-        nodes.append(RRTStarPlannerGrid.Node(self._state[0], self._state[1], -1))
+        nodes: List[RRTPlannerGrid.Node] = []
+        nodes.append(RRTPlannerGrid.Node(self._state[0], self._state[1], -1))
 
         cnt = 0
         max_cnt = 10000
@@ -97,11 +102,14 @@ class RRTStarPlannerGrid:
                 continue
 
             # 新たなノードを追加
-            nodes.append(RRTStarPlannerGrid.Node(theta1, theta2, min_index))
+            nodes.append(RRTPlannerGrid.Node(theta1, theta2, min_index))
 
             if (theta1 - self._state[2])**2 + (theta2 - self._state[3])**2 < step**2:
                 success = True
                 break
+
+            if self.animation:
+                self.__plot_process(nodes)
 
         if not success:
             print('Fail')
@@ -190,6 +198,35 @@ class RRTStarPlannerGrid:
                 second_index += 1
 
         print('finish post processing')
+
+    def __init_plot(self) -> None:
+        _, self.ax = plt.subplots()
+        self.ax.set_aspect('equal')
+        self.ax.set_xlim(-np.pi, np.pi)
+        self.ax.set_ylim(-np.pi, np.pi)
+    
+    def __plot_process(self, nodes: List[Node]) -> None:
+        # 図をクリアする
+        self.ax.cla()
+        self.ax.set_aspect('equal')
+        self.ax.set_xlim(-np.pi, np.pi)
+        self.ax.set_ylim(-np.pi, np.pi)
+
+        # 各ノードについて、親ノードとの間に線を引く
+        for i, node in enumerate(nodes):
+            if node.parent == -1:
+                continue
+            self.ax.plot([nodes[node.parent].x, node.x], [nodes[node.parent].y, node.y], color='black', linewidth=0.5)
+
+        # gridの描画
+        for i in range(self.grid_num):
+            for j in range(self.grid_num):
+                if self.grid[i, j]:
+                    ang1, ang2 = self.__get_angle(i, j)
+                    self.ax.add_patch(plt.Circle((ang1, ang2), 0.01, color='red'))
+
+        plt.draw()
+        plt.pause(0.001)     # 更新時間まち
     
 def main():
     # ロボットのパラメータ
@@ -209,10 +246,10 @@ def main():
     robot = TwoLinkRobot(robot_param)
 
     # 障害物のパラメータ
-    obstacle = CircleObstacle(1.3, 1.3, 0.5)
+    obstacle = CircleObstacle(0.9, 1.0, 0.3)
 
     # 軌道計画
-    planner = RRTStarPlannerGrid(robot, obstacle)
+    planner = RRTPlannerGrid(robot, obstacle, animation=False)
     planner.set_time(1)
     planner.set_state(0, 0, np.pi / 2, 0)
 
