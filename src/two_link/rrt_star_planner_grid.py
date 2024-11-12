@@ -308,12 +308,12 @@ def main():
     robot = TwoLinkRobot(robot_param)
 
     # 障害物のパラメータ
-    obstacle = CircleObstacle(0.9, 1.0, 0.3)
+    obstacle = CircleObstacle(0, 1.6, 0.6)
 
     # 軌道計画
     planner = RRTStarPlannerGrid(robot, obstacle, animation=False)
     planner.set_time(total_time)
-    planner.set_state(0, 0, np.pi / 2, 0)
+    planner.set_state(0, 0, np.pi, 0)
 
     time = np.linspace(0, total_time, time_division)
     trajectory = np.array([planner.calc(t) for t in time])
