@@ -30,7 +30,7 @@ STEP = int(SIMULATION_TIME / DELTA_TIME)
 TIME_SQUENCE = np.linspace(0, SIMULATION_TIME, STEP)
 
 OBSTACLE_POS = [[0.0, -1.5], [1, 2]]
-OBSTACLE_RADIUS = [1.0, 0.7]
+OBSTACLE_RADIUS = [1.0, 0.8]
 
 
 # Cost function
@@ -92,7 +92,7 @@ nlp = {
     "g": g,
 }
 
-solver = ca.nlpsol("solver", "ipopt", nlp)
+solver = ca.nlpsol("solver", "fatrop", nlp)
 
 # initial guess, 0, 0
 theta_init = [0.0] * STEP * 2
