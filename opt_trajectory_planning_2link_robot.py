@@ -22,7 +22,7 @@ def fk(ang1, ang2):
 # Parameters
 LENGTH1 = 1
 LENGTH2 = 0.7
-TARGET_POS = (-1.0, 0.0000001)
+TARGET_POS = (-0.5, 1.3)
 
 SIMULATION_TIME = 50.0
 DELTA_TIME = 1.0
