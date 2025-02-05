@@ -5,5 +5,5 @@
 # Released under the MIT license
 # https://opensource.org/licenses/mit-license.php
 
-from .two_link_robot import TwoLinkRobot
-from .two_link_robot_param import TwoLinkRobotParam, TwoLinkRobotColorParam
+from robopt import TwoLinkRobot
+from robopt import TwoLinkRobotParam, TwoLinkRobotColorParam

@@ -29,8 +29,8 @@ DELTA_TIME = 1.0
 STEP = int(SIMULATION_TIME / DELTA_TIME)
 TIME_SQUENCE = np.linspace(0, SIMULATION_TIME, STEP)
 
-OBSTACLE_POS = [[0.0, -1.5], [1, 2]]
-OBSTACLE_RADIUS = [1.0, 0.8]
+OBSTACLE_POS = [[3, -1.5], [1, 2]]
+OBSTACLE_RADIUS = [1.0, 1.1]
 
 
 # Cost function
@@ -64,17 +64,50 @@ def smooth_cost(ang1s, ang2s):
 
 # 障害物との距離を考慮した制約
 def obstacle_cost(ang1s, ang2s):
-    min_dist = ca.inf
+    min_dist = ca.vertcat()
     for i in range(STEP):
+        dist = ca.inf
         for j, v in enumerate(OBSTACLE_POS):
             x, y = fk(ang1s[i], ang2s[i])
-            dist = ca.sqrt((x - v[0]) ** 2 + (y - v[1]) ** 2) - OBSTACLE_RADIUS[j]
-            min_dist = ca.if_else(dist < min_dist, dist, min_dist)
+            temp = ca.sqrt((x - v[0]) ** 2 + (y - v[1]) ** 2) - OBSTACLE_RADIUS[j]
+            dist = ca.if_else(temp < dist, temp, dist)
 
             x1, y1 = (LENGTH1 * ca.cos(ang1s[i]), LENGTH1 * ca.sin(ang1s[i]))
-            dist = ca.sqrt((x1 - v[0]) ** 2 + (y1 - v[1]) ** 2) - OBSTACLE_RADIUS[j]
-            min_dist = ca.if_else(dist < min_dist, dist, min_dist)
+            temp = ca.sqrt((x1 - v[0]) ** 2 + (y1 - v[1]) ** 2) - OBSTACLE_RADIUS[j]
+            dist = ca.if_else(temp < dist, temp, dist)
+
+        min_dist = ca.vertcat(min_dist, dist)
+
     return min_dist
+
+def obstacle_cost_for_plot(ang1, ang2):
+    min_dist = ca.inf
+    for j, v in enumerate(OBSTACLE_POS):
+        x, y = fk(ang1, ang2)
+        dist = ca.sqrt((x - v[0]) ** 2 + (y - v[1]) ** 2) - OBSTACLE_RADIUS[j]
+        min_dist = ca.if_else(dist < min_dist, dist, min_dist)
+
+        x1, y1 = (LENGTH1 * ca.cos(ang1), LENGTH1 * ca.sin(ang1))
+        dist = ca.sqrt((x1 - v[0]) ** 2 + (y1 - v[1]) ** 2) - OBSTACLE_RADIUS[j]
+        min_dist = ca.if_else(dist < min_dist, dist, min_dist)
+
+    return min_dist
+
+ang1_plt = np.linspace(-np.pi, np.pi, 100)
+ang2_plt = np.linspace(-np.pi, np.pi, 100)
+val_plt = np.zeros((100, 100))
+for i, ang1 in enumerate(ang1_plt):
+    for j, ang2 in enumerate(ang2_plt):
+        val_plt[i, j] = obstacle_cost_for_plot(ang1, ang2)
+
+plt.contourf(ang1_plt, ang2_plt, val_plt, levels=100)
+plt.colorbar()
+
+plt.xlabel("angle1")
+plt.ylabel("angle2")
+plt.title("obstacle cost")
+plt.grid()
+plt.show()
 
 
 # Optimization
@@ -83,7 +116,9 @@ theta2 = ca.SX.sym("theta2", STEP)
 
 cost = dist_cost(theta1, theta2) + smooth_cost(theta1, theta2)
 
-g = ca.vertcat(theta1, theta2, obstacle_cost(theta1, theta2))
+g2 = obstacle_cost(theta1, theta2)
+print(g2.shape)
+g = ca.vertcat(theta1, theta2, g2)
 
 # nlpsolver
 nlp = {
@@ -92,14 +127,17 @@ nlp = {
     "g": g,
 }
 
-solver = ca.nlpsol("solver", "fatrop", nlp)
+# solver = ca.nlpsol("solver", "fatrop", nlp)
+solver = ca.nlpsol("solver", "ipopt", nlp)
 
 # initial guess, 0, 0
-theta_init = [0.0] * STEP * 2
+theta1_line = np.linspace(0, ca.pi, STEP)
+theta2_line = np.linspace(0, -ca.pi, STEP)
+theta_init = np.concatenate([theta1_line, theta2_line])
 
-upper_bound = [0] + [ca.pi] * (STEP - 1) + [0] + [ca.pi] * (STEP - 1) + [ca.inf]
+upper_bound = [0] + [ca.pi] * (STEP - 1) + [0] + [ca.pi] * (STEP - 1) + [ca.inf] * STEP
 lower_bound = (
-    [0] + [-ca.pi] * (STEP - 1) + [0] + [-ca.pi] * (STEP - 1) + [0.0]
+    [0] + [-ca.pi] * (STEP - 1) + [0] + [-ca.pi] * (STEP - 1) + [0.0] * STEP
 )
 
 # solve
@@ -188,4 +226,22 @@ ax[2].set_ylabel("ddangle")
 ax[2].legend()
 ax[2].grid()
 
+plt.show()
+
+# angle1-angle2 plots に，先ほどのval_pltを追加
+fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+ax.plot(theta_plot[:, 0], theta_plot[:, 1])
+ax.set_xlabel("angle1")
+ax.set_ylabel("angle2")
+ax.grid()
+
+# 0以上であれば赤色，0未満であれば青色
+plt.contourf(ang1_plt, ang2_plt, val_plt, levels=100, alpha=0.5, cmap="coolwarm")
+plt.colorbar()
+
+plt.xlabel("angle1")
+plt.ylabel("angle2")
+plt.title("obstacle cost")
+plt.grid()
 plt.show()
